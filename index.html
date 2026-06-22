@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Ritual-Game — Demo Wrapper</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; }
+    #topbar { height: 48px; background:#222; color:#fff; display:flex; align-items:center; padding:0 12px; }
+    #connectBtn { margin-left:auto; background:#1f8ef1; color:#fff; border:none; padding:8px 12px; cursor:pointer; border-radius:4px; }
+    #address { margin-left:12px; font-size:0.9rem; }
+    iframe { width:100%; height:calc(100vh - 48px); border:0; }
+  </style>
+  <!-- ethers.js v5 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+</head>
+<body>
+  <div id="topbar">
+    <div>Ritual Game (Demo)</div>
+    <div id="address"></div>
+    <button id="connectBtn">Connect Wallet</button>
+  </div>
+
+  <!-- 假设 game.html 是 Godot HTML5 导出后生成的主页面（或把 Godot 导出的文件放在同一目录，用iframe加载） -->
+  <iframe id="gameFrame" src="game.html" title="Game"></iframe>
+
+  <script>
+    const connectBtn = document.getElementById('connectBtn');
+    const addressEl = document.getElementById('address');
+    let provider = null;
+    let signer = null;
+    let userAddress = null;
+
+    // Placeholder: Ritual Testnet parameters should be filled with official values from Ritual docs
+    const RITUAL_TESTNET_PARAMS = {
+      chainIdHex: '0x0', // replace with actual hex chainId, e.g. '0x5B8D'
+      chainName: 'Ritual Testnet',
+      rpcUrls: ['https://<RITUAL_TESTNET_RPC>'],
+      nativeCurrency: { name: 'Ritual', symbol: 'RIT', decimals: 18 },
+      blockExplorerUrls: ['https://explorer.ritual.test/']
+    };
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert('请安装 MetaMask 或支持的浏览器钱包。');
+        return;
+      }
+      try {
+        // 请求连接
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        addressEl.textContent = userAddress;
+
+        // 显示余额（只读，调用不会花 gas）
+        const balance = await provider.getBalance(userAddress);
+        const ethStr = ethers.utils.formatEther(balance);
+        addressEl.textContent = `${userAddress} — ${ethStr} RIT?`;
+
+        connectBtn.textContent = 'Connected';
+        connectBtn.disabled = true;
+      } catch (err) {
+        console.error(err);
+        alert('连接失败：' + (err.message || err));
+      }
+    }
+
+    connectBtn.addEventListener('click', connectWallet);
+
+    // 页面与 game iframe 通信示例：接收来自游戏的事件（例如通关）
+    window.addEventListener('message', (ev) => {
+      if (!ev.data) return;
+      const data = ev.data;
+      if (data.type === 'GAME_EVENT') {
+        if (data.event === 'level_complete') {
+          // 游戏完成关卡；弹出提示但不自动发送链上交易
+          if (!userAddress) {
+            alert('已通关！请先连接钱包以记录成绩（可选）。');
+            return;
+          }
+          if (confirm('已通关！是否记录成绩到链上（测试网，需签名并支付 gas）？')) {
+            // 示例：构造一个交易或调用合约（下面为示例伪代码）
+            // sendScoreToChain(score);
+            alert('示例：此处会调用写链上逻辑（需要你提供合约地址与 ABI）');
+          }
+        }
+      }
+    }, false);
+
+    // 示例：如何在页面主动向游戏发送消息
+    function sendMessageToGame(payload) {
+      const iframe = document.getElementById('gameFrame');
+      iframe.contentWindow.postMessage(payload, '*');
+    }
+
+    // 示例：检查并提示用户将 MetaMask 切换到 Ritual 测试网（实际参数需从官方文档填充）
+    async function ensureRitualTestnet() {
+      if (!window.ethereum) return;
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: RITUAL_TESTNET_PARAMS.chainIdHex }]
+        });
+      } catch (switchError) {
+        // 未添加该网络，尝试请求添加
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: RITUAL_TESTNET_PARAMS.chainIdHex,
+              chainName: RITUAL_TESTNET_PARAMS.chainName,
+              rpcUrls: RITUAL_TESTNET_PARAMS.rpcUrls,
+              nativeCurrency: RITUAL_TESTNET_PARAMS.nativeCurrency,
+              blockExplorerUrls: RITUAL_TESTNET_PARAMS.blockExplorerUrls
+            }]
+          });
+        } catch (addError) {
+          console.error('添加 Ritual 网络失败', addError);
+        }
+      }
+    }
+
+    // （可选）自动尝试确保网络：在连接后调用
+    // connectWallet().then(() => ensureRitualTestnet());
+  </script>
+</body>
+</html>

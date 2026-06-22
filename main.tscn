@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3 uid="MainScene"]
+[ext_resource path="res://player.gd" type="Script" id=1]
+[node name="Main" type="Node2D"]
+position = Vector2(0, 0)
+
+[node name="Player" parent="." instance=ExtResource( 1 )]
+type = "CharacterBody2D"
+position = Vector2(64, 200)
+# 注意：在 Godot 编辑器内，把 Player 节点实际设置为 CharacterBody2D，然后把 player.gd 作为脚本 attach
+
+[node name="Camera2D" type="Camera2D" parent="."]
+current = true
+position = Vector2(320, 240)
+
+# 说明：这里是一个极简示例场景。更方便的办法是在 Godot 中新建项目，创建 Node2D 根节点，
+# 新增 CharacterBody2D 节点命名为 Player，附加上面的 player.gd 脚本，添加静态地面（StaticBody2D + CollisionShape2D），
+# 并在 Project Settings 的 Input Map 添加动作：ui_left (A/Left), ui_right (D/Right), ui_up (W/Space/Up)。
